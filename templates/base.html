@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Teacher App{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('home') }}" class="nav-link">בית</a>
+            <a href="{{ url_for('register') }}" class="nav-link">הרשמה</a>
+            
+            {% if 'user_id' not in session %}
+                <!-- Show Login link only when the user is not logged in -->
+                <a href="{{ url_for('login') }}" class="nav-link">התחברות</a>
+            {% else %}
+                <!-- Show Questions and Logout links when the user is logged in -->
+                <a href="{{ url_for('get_question') }}" class="nav-link">שאלות</a>
+                <span class="welcome-text">ברוך הבא, {{ session['username'] }}!</span>
+                <a href="{{ url_for('logout') }}" class="nav-link">התנתקות</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flash-messages">
+            {% for category, message in messages %}
+            <li class="flash-message {{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

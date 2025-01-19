@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ question.question_text }}</h1>
+
+<!-- Image Display for Non-GeoGebra Questions -->
+{% if question.image_url %}
+<div id="imageContainer" style="text-align: center; margin-bottom: 20px;">
+    <img src="{{ question.question_image_url }}" alt="Question Image" 
+         style="max-width: 70%; height: auto; border: 2px solid #ccc; border-radius: 10px;">
+</div>
+{% endif %}
+
+<!-- GeoGebra Applet Container -->
+{% if question.applet_id %}
+<div id="ggb-container" style="padding-left:50px; max-width: 1000px; margin: 0 auto;">
+    <div id="ggb-element" style="width: 100%; height: 600px;"></div>
+</div>
+<script src="https://www.geogebra.org/apps/deployggb.js"></script>
+{% endif %}
+
+<!-- Conditional rendering based on question type -->
+<div id="mcqContainer" style="display: none; margin-top: 20px;">
+    <form id="mcqForm" style="text-align: center;">
+        <p style="font-size: 1.2em; font-weight: bold;">Please select the correct answer:</p>
+        <div style="display: inline-block; text-align: left;">
+            {% for option in possible_answers %}
+            <label style="display: block; margin-bottom: 10px; cursor: pointer;">
+                <input type="radio" name="mcq_answer" value="{{ option }}" required 
+                       style="appearance: none; width: 20px; height: 20px; border: 2px solid #007bff; border-radius: 50%; outline: none; margin-right: 10px; cursor: pointer; position: relative;">
+                {{ option }}
+            </label>
+            {% endfor %}
+        </div>
+        <textarea id="mcqExplanation" placeholder="Optional: Add your explanation" 
+                  style="width: 100%; max-width: 600px; height: 80px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;"></textarea><br>
+        <button type="button" id="submitMcqButton" 
+                style="margin-top: 10px; padding: 10px 20px; font-size: 1.1em; color: white; background-color: #007bff; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;">
+            Submit Answer
+        </button>
+    </form>
+</div>
+
+<style>
+    input[type="radio"]:checked {
+        background-color: #007bff; /* Blue fill when selected */
+        border-color: #0056b3;    /* Darker border color */
+    }
+    #submitMcqButton:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<div id="openEndedContainer" style="display: none; text-align: center; margin-top: 20px;">
+    <input type="text" id="userAnswer" placeholder="Enter your answer here" 
+           style="width: 100%; max-width: 600px; height: 40px; padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px;">
+    <button id="submitAnswerButton" 
+            style="padding: 10px 20px; font-size: 1.1em; color: white; background-color: #007bff; border: none; border-radius: 5px; cursor: pointer;">
+        Submit Answer
+    </button>
+</div>
+
+<!-- Feedback Section -->
+<div id="feedback" style="margin-top: 20px; text-align: center;"></div>
+
+<!-- Button for the next question -->
+{% if next_question_id %}
+<div style="text-align: center; margin-top: 20px;">
+    <button
+        id="nextQuestionButton"
+        onclick="window.location.href='{{ url_for('get_question', question_id=next_question_id) }}'"
+        style="padding: 10px 20px; font-size: 1.1em; color: white; background-color: #28a745; border: none; border-radius: 5px; cursor: pointer;">
+        Next Question
+    </button>
+</div>
+{% else %}
+<p style="margin-top: 20px; color: rgb(0, 128, 64); text-align: center;">No more questions available. Well done!</p>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const startTime = Date.now(); // Track start time
+
+        const hasGeoGebra = "{{ question.applet_id }}" !== "";
+
+        if (hasGeoGebra) {
+            const params = {
+                "material_id": "{{ question.applet_id }}",
+                "width": 800,
+                "height": 600,
+                "showToolBar": true,
+                "showMenuBar": false,
+                "showAlgebraInput": false
+            };
+
+            const container = document.getElementById('ggb-element');
+            let applet = new GGBApplet(params, true);
+            applet.inject('ggb-element');
+        }
+
+        const questionType = "{{ question.question_type }}";
+
+        if (questionType === 'mcq') {
+            document.getElementById('mcqContainer').style.display = 'block';
+
+            const submitMcqButton = document.getElementById('submitMcqButton');
+            submitMcqButton.addEventListener('click', async function () {
+                const mcqForm = document.getElementById('mcqForm');
+                const selectedAnswer = mcqForm.querySelector('input[name="mcq_answer"]:checked');
+                if (!selectedAnswer) {
+                    alert('Please select an answer.');
+                    return;
+                }
+
+                const userAnswer = selectedAnswer.value;
+                const explanation = document.getElementById('mcqExplanation').value || '';
+                const timeTaken = (Date.now() - startTime) / 1000;
+
+                const { geogebraData, snapshot } = { geogebraData: null, snapshot: null };
+
+                try {
+                    const response = await fetch('{{ url_for("save_user_answer", question_id=question.id) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            answer: userAnswer,
+                            explanation: explanation,
+                            time_taken: timeTaken,
+                            geogebra_data: geogebraData,
+                            snapshot: snapshot
+                        }),
+                    });
+
+                    const data = await response.json();
+                    document.getElementById('feedback').innerHTML = `<p style="color: ${data.success ? 'green' : 'red'};">${data.feedback}</p>`;
+
+                    if (data.success && data.correct) {
+                        submitMcqButton.disabled = true;
+                        mcqForm.querySelectorAll('input').forEach(input => input.disabled = true);
+
+                        if (document.getElementById('nextQuestionButton')) {
+                            document.getElementById('nextQuestionButton').style.display = 'inline-block';
+                        }
+                    }
+                } catch (error) {
+                    document.getElementById('feedback').innerHTML = `<p style="color: red;">Error submitting answer: ${error}</p>`;
+                }
+            });
+        } else {
+            document.getElementById('openEndedContainer').style.display = 'block';
+
+            const submitAnswerButton = document.getElementById('submitAnswerButton');
+            submitAnswerButton.addEventListener('click', async function () {
+                const userAnswer = document.getElementById('userAnswer').value;
+                const timeTaken = (Date.now() - startTime) / 1000;
+
+                const { geogebraData, snapshot } = { geogebraData: null, snapshot: null };
+
+                try {
+                    const response = await fetch('{{ url_for("save_user_answer", question_id=question.id) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            answer: userAnswer,
+                            time_taken: timeTaken,
+                            geogebra_data: geogebraData,
+                            snapshot: snapshot
+                        }),
+                    });
+
+                    const data = await response.json();
+                    document.getElementById('feedback').innerHTML = `<p style="color: ${data.success ? 'green' : 'red'};">${data.feedback}</p>`;
+
+                    if (data.success && data.correct) {
+                        submitAnswerButton.disabled = true;
+                        document.getElementById('userAnswer').disabled = true;
+
+                        if (document.getElementById('nextQuestionButton')) {
+                            document.getElementById('nextQuestionButton').style.display = 'inline-block';
+                        }
+                    }
+                } catch (error) {
+                    document.getElementById('feedback').innerHTML = `<p style="color: red;">Error submitting answer: ${error}</p>`;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

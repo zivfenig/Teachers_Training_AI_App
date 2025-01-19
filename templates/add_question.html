@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>הוספת שאלה</title>
+</head>
+<body>
+    <h1>הוספת שאלה חדשה</h1>
+    <form method="POST">
+        <label for="applet_id">ID אפלט:</label>
+        <input type="text" name="applet_id" id="applet_id" required><br>
+
+        <label for="question_type">סוג המשימה:</label>
+        <input type="text" name="question_type" id="question_type" required><br>
+
+        <label for="question_text">המשימה:</label>
+        <textarea name="question_text" id="question_text" rows="4" cols="50" required></textarea><br>
+
+        <label for="correct_answer">תשובה נכונה:</label>
+        <input type="text" name="correct_answer" id="correct_answer"><br>
+
+        <label for="thinking_level">רמת חשיבה:</label>
+        <input type="text" name="thinking_level" id="thinking_level"><br>
+
+        <label for="subject">נושא:</label>
+        <input type="text" name="subject" id="subject" required><br>
+
+        <label for="learning_goal">יעד למידה:</label>
+        <textarea name="learning_goal" id="learning_goal" rows="2" cols="50" required></textarea><br>
+
+        <label for="required_knowledge">ידע דרוש:</label>
+        <textarea name="required_knowledge" id="required_knowledge" rows="2" cols="50" required></textarea><br>
+
+        <button type="submit">שמור</button>
+    </form>
+</body>
+</html>
